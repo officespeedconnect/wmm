@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Barcode Scanner</title>
+    <script src="https://unpkg.com/@zxing/library@0.19.1"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: #f0f2f5;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 500px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            margin-top: 20px;
+        }
+        
+        header {
+            background: #2c3e50;
+            color: white;
+            padding: 15px;
+            text-align: center;
+        }
+        
+        h1 {
+            font-size: 1.5rem;
+        }
+        
+        .scanner-container {
+            position: relative;
+            width: 100%;
+            height: 300px;
+            background: #1a1a1a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        #video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .scanner-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 70%;
+            height: 150px;
+            border: 3px solid #3498db;
+            border-radius: 10px;
+            box-shadow: 0 0 0 1000px rgba(0, 0, 0, 0.5);
+        }
+        
+        .scanner-line {
+            position: absolute;
+            width: 100%;
+            height: 3px;
+            background: #e74c3c;
+            box-shadow: 0 0 10px rgba(231, 76, 60, 0.8);
+            animation: scan 2s infinite linear;
+        }
+        
+        @keyframes scan {
+            0% { top: 0; }
+            50% { top: 100%; }
+            100% { top: 0; }
+        }
+        
+        .status {
+            padding: 15px;
+            text-align: center;
+            background: #f8f9fa;
+            border-top: 1px solid #e9ecef;
+        }
+        
+        .status.scanning {
+            color: #3498db;
+            font-weight: bold;
+        }
+        
+        .status.detected {
+            color: #27ae60;
+            font-weight: bold;
+        }
+        
+        .instructions {
+            padding: 15px;
+            text-align: center;
+            background: #f8f9fa;
+            border-top: 1px solid #e9ecef;
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+        
+        .result-page {
+            display: none;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .result-page h2 {
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+        
+        .scanned-code {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #e74c3c;
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            word-break: break-all;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 1rem;
+            cursor: pointer;
+            margin: 10px;
+            transition: background 0.3s;
+        }
+        
+        .btn:hover {
+            background: #2980b9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Barcode Scanner</h1>
+        </header>
+        
+        <div class="scanner-container">
+            <video id="video" playsinline></video>
+            <div class="scanner-overlay">
+                <div class="scanner-line"></div>
+            </div>
+        </div>
+        
+        <div class="status" id="status">Starting camera...</div>
+        
+        <div class="instructions">
+            Point your camera at a barcode or QR code to scan
+        </div>
+        
+        <div class="result-page" id="result-page">
+            <h2>Scan Successful!</h2>
+            <p>Scanned Code:</p>
+            <div class="scanned-code" id="scanned-code"></div>
+            <button class="btn" id="scan-again">Scan Again</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Get DOM elements
+            const video = document.getElementById('video');
+            const statusDiv = document.getElementById('status');
+            const resultPage = document.getElementById('result-page');
+            const scannedCodeEl = document.getElementById('scanned-code');
+            const scanAgainBtn = document.getElementById('scan-again');
+            
+            // Initialize variables
+            let codeReader = null;
+            let stream = null;
+            
+            // Initialize ZXing code reader
+            function initScanner() {
+                const { BrowserMultiFormatReader } = ZXing;
+                codeReader = new BrowserMultiFormatReader();
+                
+                // Start camera and scanning
+                startCamera();
+            }
+            
+            // Start camera function
+            async function startCamera() {
+                try {
+                    statusDiv.textContent = 'Accessing camera...';
+                    
+                    // Get video stream
+                    stream = await navigator.mediaDevices.getUserMedia({
+                        video: {
+                            facingMode: 'environment', // Prefer back camera
+                            width: { ideal: 1280 },
+                            height: { ideal: 720 }
+                        }
+                    });
+                    
+                    // Attach stream to video element
+                    video.srcObject = stream;
+                    video.play();
+                    
+                    // Start scanning
+                    startScanning();
+                    
+                } catch (err) {
+                    console.error('Error accessing camera:', err);
+                    statusDiv.textContent = `Error: ${err.message || 'Could not access camera'}`;
+                    
+                    // Handle iOS specific issues
+                    if (err.name === 'NotAllowedError') {
+                        statusDiv.textContent += ' - Please allow camera access';
+                    }
+                }
+            }
+            
+            // Start scanning function
+            function startScanning() {
+                statusDiv.textContent = 'Scanning...';
+                statusDiv.className = 'status scanning';
+                
+                try {
+                    // Start decoding from video stream
+                    codeReader.decodeFromVideoElement(video, (result, error) => {
+                        if (result) {
+                            handleScanResult(result);
+                        }
+                        
+                        if (error && !(error instanceof ZXing.NotFoundException)) {
+                            console.error('Scan error:', error);
+                        }
+                    });
+                } catch (err) {
+                    console.error('Scan start error:', err);
+                    statusDiv.textContent = 'Error starting scanner: ' + err.message;
+                }
+            }
+            
+            // Handle scan result
+            function handleScanResult(result) {
+                // Stop scanning
+                codeReader.reset();
+                
+                // Stop camera stream
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                }
+                
+                // Update status
+                statusDiv.textContent = 'Code detected!';
+                statusDiv.className = 'status detected';
+                
+                // Show result page
+                setTimeout(() => {
+                    // Hide scanner UI
+                    document.querySelector('.scanner-container').style.display = 'none';
+                    document.querySelector('.instructions').style.display = 'none';
+                    statusDiv.style.display = 'none';
+                    
+                    // Show result page
+                    resultPage.style.display = 'block';
+                    scannedCodeEl.textContent = result.text;
+                }, 1000);
+            }
+            
+            // Scan again button
+            scanAgainBtn.addEventListener('click', () => {
+                // Reset UI
+                resultPage.style.display = 'none';
+                document.querySelector('.scanner-container').style.display = 'flex';
+                document.querySelector('.instructions').style.display = 'block';
+                statusDiv.style.display = 'block';
+                statusDiv.textContent = 'Starting camera...';
+                
+                // Restart scanner
+                startCamera();
+            });
+            
+            // Initialize the scanner
+            initScanner();
+            
+            // Clean up on page unload
+            window.addEventListener('beforeunload', () => {
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                }
+                if (codeReader) {
+                    codeReader.reset();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
