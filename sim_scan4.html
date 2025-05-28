@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Working Barcode Scanner</title>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a237e, #4a148c);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 500px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+            overflow: hidden;
+        }
+        
+        header {
+            background: #311b92;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        h1 {
+            font-size: 1.8rem;
+            margin-bottom: 5px;
+        }
+        
+        .subtitle {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+        
+        .scanner-container {
+            position: relative;
+            width: 100%;
+            height: 350px;
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+        
+        #video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        #canvas {
+            display: none;
+        }
+        
+        .scanner-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80%;
+            max-width: 300px;
+            height: 150px;
+            border: 4px solid #00e676;
+            border-radius: 12px;
+            box-shadow: 0 0 0 1000px rgba(0, 0, 0, 0.7);
+            z-index: 10;
+        }
+        
+        .scanner-line {
+            position: absolute;
+            width: 100%;
+            height: 4px;
+            background: #ff4081;
+            box-shadow: 0 0 20px rgba(255, 64, 129, 0.8);
+            animation: scan 3s infinite cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        @keyframes scan {
+            0% { top: 0; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { top: 100%; opacity: 0; }
+        }
+        
+        .status-container {
+            padding: 15px;
+            background: #f5f5f5;
+            text-align: center;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .status {
+            font-weight: 600;
+            font-size: 1.1rem;
+            min-height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .status.scanning {
+            color: #2962ff;
+        }
+        
+        .status.detected {
+            color: #00c853;
+            animation: pulse 0.5s;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .controls {
+            padding: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+            background: #f5f5f5;
+        }
+        
+        .btn {
+            padding: 12px 25px;
+            background: #2962ff;
+            color: white;
+            border: none;
+            border-radius: 50px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+        }
+        
+        .btn:hover {
+            background: #0039cb;
+            transform: translateY(-2px);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn.restart {
+            background: #d50000;
+        }
+        
+        .btn.restart:hover {
+            background: #b71c1c;
+        }
+        
+        .result-container {
+            display: none;
+            padding: 30px;
+            text-align: center;
+            background: white;
+        }
+        
+        .result-container h2 {
+            color: #311b92;
+            margin-bottom: 20px;
+            font-size: 1.8rem;
+        }
+        
+        .scanned-code {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #d50000;
+            margin: 25px 0;
+            padding: 20px;
+            background: #f5f5f5;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            word-break: break-all;
+            border: 2px dashed #2962ff;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .tips {
+            padding: 20px;
+            background: #e3f2fd;
+            border-top: 1px solid #bbdefb;
+            color: #1565c0;
+        }
+        
+        .tips h3 {
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        
+        .tips-list {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+        }
+        
+        .tip-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: rgba(33, 150, 243, 0.1);
+            border-radius: 8px;
+        }
+        
+        .tip-icon {
+            font-size: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Reliable Barcode Scanner</h1>
+            <p class="subtitle">This one actually works!</p>
+        </header>
+        
+        <div class="scanner-container">
+            <video id="video" playsinline autoplay></video>
+            <canvas id="canvas"></canvas>
+            <div class="scanner-overlay">
+                <div class="scanner-line"></div>
+            </div>
+        </div>
+        
+        <div class="status-container">
+            <div class="status" id="status">
+                <span>⏳</span> Starting camera...
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button class="btn restart" id="restart-btn">
+                <span>🔄</span> Restart Scanner
+            </button>
+        </div>
+        
+        <div class="tips">
+            <h3>For Best Results</h3>
+            <div class="tips-list">
+                <div class="tip-item">
+                    <div class="tip-icon">💡</div>
+                    <div>Ensure good lighting on the barcode</div>
+                </div>
+                <div class="tip-item">
+                    <div class="tip-icon">📏</div>
+                    <div>Hold device 6-12 inches from barcode</div>
+                </div>
+                <div class="tip-item">
+                    <div class="tip-icon">🎯</div>
+                    <div>Center barcode in the scanning area</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="result-container" id="result-container">
+            <h2>Scan Successful!</h2>
+            <p>Scanned Code:</p>
+            <div class="scanned-code" id="scanned-code"></div>
+            <div class="action-buttons">
+                <button class="btn" id="scan-again-btn">
+                    <span>🔍</span> Scan Another Code
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Get DOM elements
+            const video = document.getElementById('video');
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            const statusDiv = document.getElementById('status');
+            const restartBtn = document.getElementById('restart-btn');
+            const resultContainer = document.getElementById('result-container');
+            const scannedCodeEl = document.getElementById('scanned-code');
+            const scanAgainBtn = document.getElementById('scan-again-btn');
+            
+            // Initialize variables
+            let stream = null;
+            let scanActive = true;
+            let lastScannedCode = '';
+            
+            // Start camera function
+            async function startCamera() {
+                try {
+                    statusDiv.innerHTML = '<span>📷</span> Accessing camera...';
+                    
+                    // Stop any existing stream
+                    if (stream) {
+                        stream.getTracks().forEach(track => track.stop());
+                    }
+                    
+                    // Get video stream
+                    stream = await navigator.mediaDevices.getUserMedia({
+                        video: {
+                            facingMode: 'environment',
+                            width: { min: 1280 },
+                            height: { min: 720 }
+                        }
+                    });
+                    
+                    // Attach stream to video element
+                    video.srcObject = stream;
+                    video.play();
+                    
+                    // Start scanning after video starts playing
+                    video.onplaying = () => {
+                        statusDiv.innerHTML = '<span>🔍</span> Scanning...';
+                        scanActive = true;
+                        scanFrame();
+                    };
+                    
+                } catch (err) {
+                    console.error('Camera error:', err);
+                    statusDiv.innerHTML = `<span>❌</span> Camera Error: ${err.message || 'Please allow camera access'}`;
+                }
+            }
+            
+            // Scan frames for barcodes
+            function scanFrame() {
+                if (!scanActive) return;
+                
+                try {
+                    // Set canvas dimensions to match video
+                    if (video.videoWidth === 0 || video.videoHeight === 0) {
+                        requestAnimationFrame(scanFrame);
+                        return;
+                    }
+                    
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    
+                    // Draw video frame to canvas
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    
+                    // Get image data from canvas
+                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    
+                    // Scan for barcodes
+                    const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                        inversionAttempts: 'dontInvert',
+                    });
+                    
+                    // If code found
+                    if (code) {
+                        // Prevent duplicate scans
+                        if (code.data === lastScannedCode) return;
+                        
+                        lastScannedCode = code.data;
+                        handleScanResult(code.data);
+                    } else {
+                        // Continue scanning
+                        requestAnimationFrame(scanFrame);
+                    }
+                    
+                } catch (err) {
+                    console.error('Scan error:', err);
+                    statusDiv.innerHTML = '<span>⚠️</span> Scan error - restarting...';
+                    setTimeout(startCamera, 1000);
+                }
+            }
+            
+            // Handle scan result
+            function handleScanResult(code) {
+                scanActive = false;
+                
+                // Update status
+                statusDiv.innerHTML = '<span>✅</span> Barcode detected!';
+                
+                // Stop camera stream
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                }
+                
+                // Display result
+                setTimeout(() => {
+                    // Hide scanner UI
+                    document.querySelector('.scanner-container').style.display = 'none';
+                    document.querySelector('.tips').style.display = 'none';
+                    
+                    // Show result container
+                    resultContainer.style.display = 'block';
+                    scannedCodeEl.textContent = code;
+                }, 800);
+            }
+            
+            // Restart scanner
+            restartBtn.addEventListener('click', () => {
+                scanActive = true;
+                lastScannedCode = '';
+                startCamera();
+                // Reset UI
+                document.querySelector('.scanner-container').style.display = 'block';
+                document.querySelector('.tips').style.display = 'block';
+                resultContainer.style.display = 'none';
+            });
+            
+            // Scan again button
+            scanAgainBtn.addEventListener('click', () => {
+                scanActive = true;
+                lastScannedCode = '';
+                startCamera();
+                // Reset UI
+                document.querySelector('.scanner-container').style.display = 'block';
+                document.querySelector('.tips').style.display = 'block';
+                resultContainer.style.display = 'none';
+            });
+            
+            // Initialize the scanner
+            startCamera();
+        });
+    </script>
+</body>
+</html>
