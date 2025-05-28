@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Barcode Scanner</title>
+    <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #1a2a6c);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 900px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            color: white;
+        }
+        
+        header {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+        }
+        
+        .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.8;
+        }
+        
+        .content {
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+        }
+        
+        @media (min-width: 768px) {
+            .content {
+                flex-direction: row;
+            }
+        }
+        
+        .camera-section, .results-section {
+            flex: 1;
+            padding: 20px;
+        }
+        
+        .section-title {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            color: #ffd166;
+            text-align: center;
+        }
+        
+        .camera-container {
+            position: relative;
+            width: 100%;
+            height: 300px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            border: 2px dashed rgba(255, 255, 255, 0.2);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        #interactive {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .camera-placeholder {
+            text-align: center;
+            padding: 20px;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 10;
+        }
+        
+        .camera-icon {
+            font-size: 5rem;
+            margin-bottom: 20px;
+            color: rgba(255, 255, 255, 0.3);
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 50px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn-primary {
+            background: #4cc9f0;
+            color: #0d1321;
+        }
+        
+        .btn-primary:hover {
+            background: #3aacd0;
+            transform: translateY(-2px);
+        }
+        
+        .btn-danger {
+            background: #f72585;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #d3166d;
+            transform: translateY(-2px);
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .scanner-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80%;
+            height: 150px;
+            border: 3px solid #4cc9f0;
+            border-radius: 10px;
+            box-shadow: 0 0 0 1000px rgba(0, 0, 0, 0.5);
+            display: none;
+            z-index: 5;
+        }
+        
+        .scanner-line {
+            position: absolute;
+            width: 100%;
+            height: 3px;
+            background: #f72585;
+            box-shadow: 0 0 10px rgba(247, 37, 133, 0.8);
+            animation: scan 2s infinite linear;
+        }
+        
+        @keyframes scan {
+            0% { top: 0; }
+            50% { top: 100%; }
+            100% { top: 0; }
+        }
+        
+        .results-container {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 15px;
+            padding: 20px;
+            height: 300px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        #results {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            font-size: 1.1rem;
+            color: white;
+            resize: none;
+            margin-bottom: 15px;
+        }
+        
+        #results:focus {
+            outline: none;
+            border-color: #4cc9f0;
+        }
+        
+        .status {
+            text-align: center;
+            padding: 10px;
+            min-height: 24px;
+        }
+        
+        .scanning {
+            color: #4cc9f0;
+            font-weight: bold;
+        }
+        
+        .detected {
+            color: #06d6a0;
+            font-weight: bold;
+            animation: pulse 0.5s;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        
+        footer {
+            text-align: center;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        
+        .camera-selector {
+            margin-top: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        select {
+            padding: 8px 15px;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            width: 100%;
+            max-width: 300px;
+        }
+        
+        select:focus {
+            outline: none;
+            border-color: #4cc9f0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Barcode Scanner</h1>
+            <p class="subtitle">Scan barcodes using your device's camera</p>
+        </header>
+        
+        <div class="content">
+            <div class="camera-section">
+                <h2 class="section-title">Camera Preview</h2>
+                <div class="camera-container">
+                    <div class="camera-placeholder" id="camera-placeholder">
+                        <div class="camera-icon">📷</div>
+                        <p>Camera feed will appear here</p>
+                    </div>
+                    <div id="interactive"></div>
+                    <div class="scanner-overlay" id="scanner-overlay">
+                        <div class="scanner-line"></div>
+                    </div>
+                </div>
+                
+                <div class="camera-selector">
+                    <label for="camera-select">Select Camera:</label>
+                    <select id="camera-select"></select>
+                </div>
+                
+                <div class="controls">
+                    <button id="start-btn" class="btn btn-primary">
+                        <span>▶</span> Start Camera
+                    </button>
+                    <button id="scan-btn" class="btn btn-primary" disabled>
+                        <span>🔍</span> Start Scanning
+                    </button>
+                    <button id="stop-btn" class="btn btn-danger" disabled>
+                        <span>⏹</span> Stop Camera
+                    </button>
+                </div>
+            </div>
+            
+            <div class="results-section">
+                <h2 class="section-title">Scan Results</h2>
+                <div class="results-container">
+                    <textarea id="results" placeholder="Scanned barcodes will appear here..." readonly></textarea>
+                    <div class="status" id="status">Ready to start scanning</div>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            <p>Note: This scanner works best with well-lit, clearly visible barcodes. Requires camera access permission.</p>
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Get DOM elements
+            const startBtn = document.getElementById('start-btn');
+            const scanBtn = document.getElementById('scan-btn');
+            const stopBtn = document.getElementById('stop-btn');
+            const resultsTextarea = document.getElementById('results');
+            const statusDiv = document.getElementById('status');
+            const scannerOverlay = document.getElementById('scanner-overlay');
+            const cameraPlaceholder = document.getElementById('camera-placeholder');
+            const cameraSelect = document.getElementById('camera-select');
+            
+            let scanning = false;
+            let cameras = [];
+            let currentStream = null;
+            
+            // Initialize camera selection
+            async function initCameraSelection() {
+                try {
+                    // Get available cameras
+                    const devices = await navigator.mediaDevices.enumerateDevices();
+                    cameras = devices.filter(device => device.kind === 'videoinput');
+                    
+                    // Clear and populate camera select
+                    cameraSelect.innerHTML = '';
+                    
+                    if (cameras.length === 0) {
+                        cameraSelect.innerHTML = '<option>No cameras found</option>';
+                        startBtn.disabled = true;
+                        return;
+                    }
+                    
+                    cameras.forEach((camera, index) => {
+                        const option = document.createElement('option');
+                        option.value = camera.deviceId;
+                        option.text = camera.label || `Camera ${index + 1}`;
+                        cameraSelect.appendChild(option);
+                    });
+                } catch (err) {
+                    console.error('Error enumerating cameras:', err);
+                    statusDiv.textContent = 'Error getting camera list: ' + err.message;
+                }
+            }
+            
+            // Start camera function
+            startBtn.addEventListener('click', async () => {
+                try {
+                    statusDiv.textContent = 'Accessing camera...';
+                    
+                    // Get selected camera
+                    const selectedCameraId = cameraSelect.value;
+                    const constraints = {
+                        video: { 
+                            deviceId: selectedCameraId ? { exact: selectedCameraId } : undefined,
+                            width: { ideal: 1280 },
+                            height: { ideal: 720 }
+                        }
+                    };
+                    
+                    // Stop any existing stream
+                    if (currentStream) {
+                        currentStream.getTracks().forEach(track => track.stop());
+                    }
+                    
+                    // Get new stream
+                    currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+                    
+                    // Initialize Quagga
+                    await initQuagga();
+                    
+                    // Hide placeholder
+                    cameraPlaceholder.style.display = 'none';
+                    
+                    startBtn.disabled = true;
+                    scanBtn.disabled = false;
+                    stopBtn.disabled = false;
+                    
+                    statusDiv.textContent = 'Camera is active. Click "Start Scanning" to begin.';
+                } catch (err) {
+                    console.error('Error accessing camera:', err);
+                    statusDiv.textContent = `Error accessing camera: ${err.message}`;
+                }
+            });
+            
+            // Initialize Quagga barcode scanner
+            async function initQuagga() {
+                return new Promise((resolve, reject) => {
+                    Quagga.init({
+                        inputStream: {
+                            name: "Live",
+                            type: "LiveStream",
+                            target: document.querySelector('#interactive'),
+                            constraints: {
+                                width: 640,
+                                height: 480,
+                                facingMode: "environment"
+                            }
+                        },
+                        decoder: {
+                            readers: [
+                                "code_128_reader",
+                                "ean_reader",
+                                "ean_8_reader",
+                                "code_39_reader",
+                                "code_39_vin_reader",
+                                "codabar_reader",
+                                "upc_reader",
+                                "upc_e_reader",
+                                "i2of5_reader"
+                            ]
+                        },
+                        locate: true
+                    }, (err) => {
+                        if (err) {
+                            console.error("Quagga initialization error", err);
+                            statusDiv.textContent = "Scanner initialization failed: " + err.message;
+                            reject(err);
+                            return;
+                        }
+                        
+                        // Hide placeholder and show scanner overlay
+                        scannerOverlay.style.display = 'block';
+                        resolve();
+                    });
+                });
+            }
+            
+            // Start scanning function
+            scanBtn.addEventListener('click', () => {
+                scanning = !scanning;
+                
+                if (scanning) {
+                    startScanning();
+                } else {
+                    stopScanning();
+                }
+            });
+            
+            function startScanning() {
+                scanBtn.innerHTML = '<span>⏸</span> Pause Scanning';
+                statusDiv.textContent = 'Scanning...';
+                statusDiv.className = 'status scanning';
+                
+                // Start Quagga
+                Quagga.start();
+                
+                // Add detection callback
+                Quagga.onDetected(handleBarcodeDetection);
+            }
+            
+            function stopScanning() {
+                scanBtn.innerHTML = '<span>🔍</span> Start Scanning';
+                statusDiv.textContent = 'Scanning paused';
+                statusDiv.className = 'status';
+                
+                // Stop Quagga
+                Quagga.stop();
+            }
+            
+            // Handle barcode detection
+            function handleBarcodeDetection(data) {
+                const code = data.codeResult.code;
+                
+                // Add to results
+                const timestamp = new Date().toLocaleTimeString();
+                const newResult = `[${timestamp}] ${code}\n`;
+                
+                // Append to textarea and scroll to bottom
+                resultsTextarea.value += newResult;
+                resultsTextarea.scrollTop = resultsTextarea.scrollHeight;
+                
+                // Show detected status
+                statusDiv.textContent = `Barcode detected: ${code}`;
+                statusDiv.className = 'status detected';
+                
+                // Pause scanning briefly
+                stopScanning();
+                
+                // Resume scanning after a delay
+                setTimeout(() => {
+                    if (!scanning) {
+                        scanning = true;
+                        startScanning();
+                    }
+                }, 2000);
+            }
+            
+            // Stop camera function
+            stopBtn.addEventListener('click', () => {
+                // Stop scanning if active
+                if (scanning) {
+                    scanning = false;
+                    stopScanning();
+                }
+                
+                // Stop Quagga
+                Quagga.stop();
+                
+                // Stop camera stream
+                if (currentStream) {
+                    currentStream.getTracks().forEach(track => track.stop());
+                    currentStream = null;
+                }
+                
+                // Show placeholder
+                cameraPlaceholder.style.display = 'flex';
+                scannerOverlay.style.display = 'none';
+                
+                startBtn.disabled = false;
+                scanBtn.disabled = true;
+                stopBtn.disabled = true;
+                
+                statusDiv.textContent = 'Camera stopped. Ready to start again.';
+                statusDiv.className = 'status';
+            });
+            
+            // Initialize camera selection on load
+            initCameraSelection();
+            
+            // Clean up on page unload
+            window.addEventListener('beforeunload', () => {
+                if (currentStream) {
+                    currentStream.getTracks().forEach(track => track.stop());
+                }
+                Quagga.stop();
+            });
+        });
+    </script>
+</body>
+</html>
