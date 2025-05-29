@@ -35,7 +35,7 @@
     Html5Qrcode.getCameras().then(devices => {
       if (devices.length) {
         const cameraId = devices.find(device => device.label.toLowerCase().includes('back')) || devices[0];
-        html5QrCode.start(cameraId, { fps: 10, qrbox: 250 }, onScanSuccess, onScanError);
+       html5QrCode.start(cameraId.id, { fps: 10, qrbox: 250 }, onScanSuccess, onScanError);
       } else {
         resultEl.innerText = "No camera found.";
       }
@@ -45,9 +45,11 @@
     function onScanSuccess(decodedText, decodedResult) {
       scannedCode = decodedText;
       resultEl.innerText = `Scanned: ${decodedText}`;
-      html5QrCode.stop();
-      confirmBtn.style.display = 'inline-block';
-    }
+      html5QrCode.stop().then(() => {
+  confirmBtn.style.display = 'inline-block';
+}).catch(err => {
+  console.error("Failed to stop the scanner:", err);
+});
 
     function onScanError(errorMessage) {
       // Optional: console.log("Scanning error", errorMessage);
