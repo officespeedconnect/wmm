@@ -40,7 +40,7 @@
         resultEl.innerText = "No camera found.";
       }
     });*/
-    <!---------    -->
+ ///////////////////////
        Html5Qrcode.getCameras().then(devices => {
       if (devices && devices.length) {
         const rearCamera = devices.find(device => device.label.toLowerCase().includes('back')) || devices[0];
@@ -59,7 +59,7 @@
       resultContainer.innerText = "Camera initialization failed.";
       console.error(err);
     });
-    <!--              --------------------  -->"
+///////////////////////////////////////
 
     function onScanSuccess(decodedText, decodedResult) {
       scannedCode = decodedText;
