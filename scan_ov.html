@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>QR Code Scanner</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background: #f0f0f0;
+      padding: 20px;
+    }
+    #reader {
+      width: 100%;
+      max-width: 400px;
+      margin: auto;
+    }
+    #result {
+      margin-top: 20px;
+      font-size: 1.2em;
+      color: green;
+    }
+	 #confirm-btn { display: none; margin-top: 20px; font-size: 16px; }
+  </style>
+</head>
+<body>
+  <h1>QR Code Scanner</h1>
+  <div id="reader"></div>
+  <div id="result">Scan a QR code</div>
+	<!--						---------------- -->
+  <!--	<button id="confirm-btn">Confirm and Return</button>  -->
+
+
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script>
+    const resultContainer = document.getElementById('result');
+	
+	/*------------------------------------------------->
+    const confirmBtn = document.getElementById('confirm-btn');*/
+    let scannedCode = ""; 
+	
+    const html5QrCode = new Html5Qrcode("reader");
+
+    const config = {
+      fps: 10,
+      qrbox: { width: 250, height: 250 },
+      aspectRatio: 1.7778,
+    };
+
+    // Get redirect URL from query string
+    const urlParams = new URLSearchParams(window.location.search);
+    //const redirectUrl = urlParams.get("redirect") ;
+	const redirectUrl = urlParams.get("redirect") || "/";
+	
+	
+    function onScanSuccess(decodedText, decodedResult) {
+	 scannedCode = decodedText;
+      resultContainer.innerText = `Scanned: ${decodedText}`;
+      
+      html5QrCode.stop().then(() => {
+        console.log("Scanner stopped.");
+        resultContainer.innerText = `${redirectUr}`;
+        // If redirect URL is provided, redirect with code
+        if (redirectUrl) {
+          const returnTo = new URL(redirectUrl);
+          returnTo.searchParams.set('code', decodedText);
+          window.location.href = returnTo.toString();
+        }
+      }).catch(err => console.error("Failed to stop: ", err));
+    }
+
+    Html5Qrcode.getCameras().then(devices => {
+      if (devices && devices.length) {
+        const rearCamera = devices.find(device => device.label.toLowerCase().includes('back')) || devices[0];
+        html5QrCode.start(
+          rearCamera.id,
+          config,
+          onScanSuccess,
+          error => {
+            console.warn("QR scan error: ", error);
+          }
+        );
+      } else {
+        resultContainer.innerText = "No camera found.";
+      }
+    }).catch(err => {
+      resultContainer.innerText = "Camera initialization failed.";
+      console.error(err);
+    });
+  </script>
+</body>
+</html>
